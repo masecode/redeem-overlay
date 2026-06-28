@@ -4,6 +4,8 @@ use std::fs;
 #[derive(Debug, Deserialize)]
 pub struct Config {
     client_id: String,
+    client_secret: String,
+    redirect_port: u16,
 }
 
 impl Config {
@@ -14,8 +16,8 @@ impl Config {
     }
 }
 
-pub fn parse_configuration_file() -> String {
+pub fn parse_configuration_file() -> Config {
     let config = Config::load("config.toml").unwrap();
-    let id = config.client_id;
-    return id;
+    println!("Configuration: {:?}", config);
+    return config;
 }
