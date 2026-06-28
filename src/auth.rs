@@ -3,14 +3,18 @@ use std::net::TcpListener;
 
 /// Builds the authorization URL for the Twitch application.
 pub fn build_authorization(client_id: &str, port: u16, state: &str) -> String {
-    // TODO: Format URL string.
-    // https://id.twitch.tv/oauth2/authorize?[parameters]
     format!(
         "https://id.twitch.tv/oauth2/authorize?response_type=code&client_id={}&redirect_uri=http%3A%2F%2Flocalhost%3A{}&scope=channel%3Aread%3Aredemptions&state={}",
         client_id, port, state
     )
 }
 
+/// Function that will bind a TcpListener to a localhost address and look for the OAuth redirect.
+///
+/// # Panics
+///
+/// Panics if:
+/// - the state from redirect is not the expected state.
 pub fn wait_for_code(port: u16, expected_state: &str) -> String {
     let addr = format!("127.0.0.1:{}", port);
     let listener = TcpListener::bind(&addr).unwrap();
