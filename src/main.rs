@@ -1,11 +1,12 @@
 mod auth;
+mod configparser;
 
 /**
  * Main method.
  */
 fn main() {
     webbrowser::open(&auth::build_authorization(
-        "client_id", // Placeholder. TODO: Get config.toml parser working.
+        &configparser::parse_configuration_file(),
         3000,
         "temp_state_123",
     ));
