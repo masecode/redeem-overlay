@@ -16,6 +16,9 @@ impl Config {
     }
 }
 
+/// Parses TOML configuration files.
+/// This function reads the specified file, parses its contents as a TOML document,
+/// and returns the parsed configuration.
 pub fn parse_configuration_file() -> Config {
     let config = Config::load("config.toml").unwrap();
     println!("Configuration: {:?}", config);
