@@ -56,7 +56,7 @@ pub fn wait_for_code(port: u16, expected_state: &str) -> String {
 
         let body = "You can close this tab now, received.";
         let response = format!(
-            "HTTP/1.1 200 OK\r\nContent-Length: {} \r\n\r\n{}",
+            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n{}",
             body.len(),
             body
         );
