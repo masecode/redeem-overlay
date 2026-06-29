@@ -3,9 +3,9 @@ use std::fs;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    client_id: String,
-    client_secret: String,
-    redirect_port: u16,
+    pub client_id: String,
+    pub client_secret: String,
+    pub redirect_port: u16,
 }
 
 impl Config {
