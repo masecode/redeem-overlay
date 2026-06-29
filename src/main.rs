@@ -1,3 +1,5 @@
+use anyhow::Ok;
+
 mod auth;
 mod configparser;
 mod connect;
@@ -5,12 +7,14 @@ mod connect;
 /**
  * Main method.
  */
-fn main() {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let config = configparser::parse_configuration_file();
     webbrowser::open(&auth::build_authorization(
         &configparser::parse_configuration_file(),
         3000,
         "temp_state_123",
-    ));
+    ))?;
     let code = auth::wait_for_code(3000, "temp_state_123");
     println!("Got code: {}", code);
 
