@@ -11,7 +11,7 @@ mod connect;
 async fn main() -> anyhow::Result<()> {
     let config = configparser::parse_configuration_file();
     webbrowser::open(&auth::build_authorization(
-        &configparser::parse_configuration_file(),
+        &config.client_id,
         3000,
         "temp_state_123",
     ))?;
