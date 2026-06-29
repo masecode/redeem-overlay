@@ -1,5 +1,13 @@
+use serde::Deserialize;
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpListener;
+
+#[derive(Debug, Deserialize)]
+pub struct TokenResponse {
+    pub access_token: String,
+    pub refresh_token: String,
+    pub expires_in: u64,
+}
 
 /// Builds the authorization URL for the Twitch application.
 pub fn build_authorization(client_id: &str, port: u16, state: &str) -> String {
@@ -56,4 +64,30 @@ pub fn wait_for_code(port: u16, expected_state: &str) -> String {
         return code.to_string();
     }
     unreachable!();
+}
+
+pub async fn exchange_code(
+    client_id: &str,
+    client_secret: &str,
+    code: &str,
+    port: u16,
+) -> anyhow::Result<TokenResponse> {
+    let redirect_url = format!("http://localhost:{}", port.to_string());
+    let params = [
+        ("client_id", client_id),
+        ("client_secret", client_secret),
+        ("redirect_uri", &redirect_url),
+        ("code", code),
+        ("grant_type", "authorization_code"),
+    ];
+
+    let client = reqwest::Client::new();
+    let post_response = client
+        .post("https://id.twitch.tv/oauth2/token")
+        .form(&params)
+        .send()
+        .await?;
+    let tokens = post_response.json::<TokenResponse>().await?;
+
+    Ok(tokens)
 }
