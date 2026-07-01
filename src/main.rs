@@ -3,6 +3,7 @@ use anyhow::Ok;
 mod auth;
 mod configparser;
 mod connect;
+mod twitch;
 
 /**
  * Main method.
