@@ -32,5 +32,7 @@ async fn main() -> anyhow::Result<()> {
         auth::get_broadcaster_id(&config.client_id, &tokens.access_token).await?
     );
 
+    // This has to be LAST. Do not put anything after connect.
+    connect::connect("todo").await;
     Ok(())
 }
