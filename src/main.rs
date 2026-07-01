@@ -30,7 +30,7 @@ async fn main() -> anyhow::Result<()> {
     println!("{:?}", tokens);
     println!(
         "Broadcaster id: {}",
-        auth::get_broadcaster_id(&config.client_id, &tokens.access_token).await?
+        twitch::get_broadcaster_id(&config.client_id, &tokens.access_token).await?
     );
 
     // This has to be LAST. Do not put anything after connect.
