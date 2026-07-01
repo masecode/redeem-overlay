@@ -27,6 +27,10 @@ async fn main() -> anyhow::Result<()> {
     .await?;
 
     println!("{:?}", tokens);
+    println!(
+        "Broadcaster id: {}",
+        auth::get_broadcaster_id(&config.client_id, &tokens.access_token).await?
+    );
 
     Ok(())
 }

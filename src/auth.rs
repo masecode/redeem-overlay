@@ -8,6 +8,15 @@ pub struct TokenResponse {
     pub refresh_token: String,
     pub expires_in: u64,
 }
+#[derive(Deserialize)]
+pub struct HelixData {
+    data: Vec<HelixArray>,
+}
+#[derive(Deserialize)]
+pub struct HelixArray {
+    id: String,
+    login: String,
+}
 
 /// Builds the authorization URL for the Twitch application.
 pub fn build_authorization(client_id: &str, port: u16, state: &str) -> String {
@@ -90,4 +99,19 @@ pub async fn exchange_code(
     let tokens = post_response.json::<TokenResponse>().await?;
 
     Ok(tokens)
+}
+
+pub async fn get_broadcaster_id(client_id: &str, token: &str) -> anyhow::Result<String> {
+    let client = reqwest::Client::new();
+    let get_request = client
+        .get("https://api.twitch.tv/helix/users")
+        .header("Authorization", format!("Bearer {}", token))
+        .header("Client-Id", client_id)
+        .send()
+        .await?;
+
+    let info = get_request.json::<HelixData>().await?;
+    let id = info.data[0].id.to_string();
+
+    Ok(id)
 }
