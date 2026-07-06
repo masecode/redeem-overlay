@@ -1,5 +1,9 @@
+use std::fmt::format;
+
+use anyhow::Error;
 use futures_util::StreamExt;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use serde_json::json;
 use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::Message;
 
@@ -26,7 +30,36 @@ struct Session {
     id: String,
 }
 
-pub async fn connect(access_token: &str) -> anyhow::Result<()> {
+// Request Body stores a request body used to send a POST request to Twitch to subscribe. Specifically, for the custom reward points subscription.
+#[derive(Serialize, Deserialize)]
+pub struct RequestBody {
+    r#type: String,
+    version: u32,
+    condition: Condition,
+    transport: Transport,
+}
+#[derive(Serialize, Deserialize)]
+struct Condition {
+    broadcaster_user_id: String,
+}
+#[derive(Serialize, Deserialize)]
+struct Transport {
+    method: String,
+    session_id: String,
+}
+
+// Response Body is used for storing data that Twitch sends back in response to our subscription request.
+#[derive(Deserialize)]
+pub struct ResponseBody {
+    data: Vec<ResponseArray>,
+}
+#[derive(Deserialize)]
+pub struct ResponseArray {
+    status: String,
+    r#type: String,
+}
+
+pub async fn connect(access_token: &str, client_id: &str, user_id: &str) -> anyhow::Result<()> {
     let (ws_stream, response) = connect_async("wss://eventsub.wss.twitch.tv/ws")
         .await
         .expect("Failed to connect to websocket.");
@@ -41,8 +74,15 @@ pub async fn connect(access_token: &str) -> anyhow::Result<()> {
             let envelope: Envelope = serde_json::from_str(&text)?;
             match envelope.metadata.message_type.as_str() {
                 "session_welcome" => {
-                    let mut welcome_text: WelcomeMessage = serde_json::from_str(&text)?;
-                    println!("welcome message id: {}", welcome_text.payload.session.id)
+                    let welcome_text: WelcomeMessage = serde_json::from_str(&text)?;
+                    println!("welcome message id: {}", welcome_text.payload.session.id);
+                    subscribe_to_channel_points(
+                        access_token,
+                        &welcome_text.payload.session.id,
+                        client_id,
+                        user_id,
+                    )
+                    .await?;
                 }
                 "session_keepalive" => {}
                 "notification" => {}
@@ -52,4 +92,49 @@ pub async fn connect(access_token: &str) -> anyhow::Result<()> {
     }
 
     todo!()
+}
+/// Method that subscribes to a broadcasters custom rewards notification endpoint.
+pub async fn subscribe_to_channel_points(
+    access_token: &str,
+    session_id: &str,
+    client_id: &str,
+    broadcaster_user_id: &str,
+) -> Result<ResponseBody, reqwest::Error> {
+    let client = reqwest::Client::new();
+
+    let body = RequestBody {
+        r#type: String::from("channel.channel_points_custom_reward_redemption.add"),
+        version: 1,
+        condition: Condition {
+            broadcaster_user_id: broadcaster_user_id.to_string(),
+        },
+        transport: Transport {
+            method: String::from("websocket"),
+            session_id: session_id.to_string(),
+        },
+    };
+
+    let post_request = client
+        .post("https://api.twitch.tv/helix/eventsub/subscriptions")
+        .header("Authorization", format!("Bearer {}", access_token))
+        .header("Client-Id", client_id)
+        .header("Content-Type", "application/json")
+        .json(&body)
+        .send()
+        .await?;
+
+    let status = post_request.status();
+    let body_text = post_request.text().await?;
+    if !status.is_success() {
+        println!("Subscription Request status code {}", status);
+        eprintln!("Error body: {:?}", body_text);
+    }
+
+    // Receive data
+    let post_response: ResponseBody = serde_json::from_str(&body_text).unwrap();
+    println!(
+        "Subscribed to {} with a status of {}",
+        post_response.data[0].r#type, post_response.data[0].status
+    );
+    Ok(post_response)
 }
