@@ -3,14 +3,16 @@ use serde::Deserialize;
 use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::Message;
 
-#[derive(Deserialize)]
-struct Metadata {
-    message_type: String,
-}
+// Envelope is a struct that is used for storing messages sent back from the Twitch API.
 #[derive(Deserialize)]
 struct Envelope {
     metadata: Metadata,
 }
+#[derive(Deserialize)]
+struct Metadata {
+    message_type: String,
+}
+// WelcomeMessage is a struct that is used to store data from Twitch's initial welcome message.
 #[derive(Deserialize)]
 struct WelcomeMessage {
     payload: WelcomePayload,

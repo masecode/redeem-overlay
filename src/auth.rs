@@ -4,7 +4,7 @@ use std::net::TcpListener;
 
 #[derive(Debug, Deserialize)]
 pub struct TokenResponse {
-    pub access_token: String,
+    pub access_token: String, // Authorization Bearer token, needed for POST responses.
     pub refresh_token: String,
     pub expires_in: u64,
 }
