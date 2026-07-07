@@ -60,7 +60,8 @@ pub struct ResponseArray {
 }
 
 pub async fn connect(access_token: &str, client_id: &str, user_id: &str) -> anyhow::Result<()> {
-    let (ws_stream, response) = connect_async("wss://eventsub.wss.twitch.tv/ws")
+    const TWITCH_WEBSOCKET_URL: &str = "ws://localhost:8080/ws";
+    let (ws_stream, response) = connect_async(TWITCH_WEBSOCKET_URL)
         .await
         .expect("Failed to connect to websocket.");
 
@@ -100,11 +101,13 @@ pub async fn subscribe_to_channel_points(
     client_id: &str,
     broadcaster_user_id: &str,
 ) -> Result<ResponseBody, reqwest::Error> {
+    const TWITCH_SUBSCRIPTIONS_URL: &str = "http://127.0.0.1:8080/eventsub/subscriptions";
+    const CHANNEL_POINTS_TYPE: &str = "channel.channel_points_custom_reward_redemption.add";
     let client = reqwest::Client::new();
 
     let body = RequestBody {
-        r#type: String::from("channel.channel_points_custom_reward_redemption.add"),
-        version: 1,
+        r#type: String::from(CHANNEL_POINTS_TYPE),
+        version: String::from("1"),
         condition: Condition {
             broadcaster_user_id: broadcaster_user_id.to_string(),
         },
@@ -115,7 +118,7 @@ pub async fn subscribe_to_channel_points(
     };
 
     let post_request = client
-        .post("https://api.twitch.tv/helix/eventsub/subscriptions")
+        .post(TWITCH_SUBSCRIPTIONS_URL)
         .header("Authorization", format!("Bearer {}", access_token))
         .header("Client-Id", client_id)
         .header("Content-Type", "application/json")
