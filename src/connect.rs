@@ -30,6 +30,27 @@ struct Session {
     id: String,
 }
 
+// Keep alive message structs
+#[derive(Deserialize)]
+struct KeepAliveMessage {
+    metadata: Metadata,
+}
+
+// Notification message structs
+#[derive(Deserialize)]
+struct NotificationMessage {
+    metadata: Metadata,
+    payload: NotificationPayload,
+}
+#[derive(Deserialize)]
+struct NotificationPayload {
+    event: NotificationEvent,
+}
+#[derive(Deserialize)]
+struct NotificationEvent {
+    broadcaster_user_name: String,
+}
+
 // Request Body stores a request body used to send a POST request to Twitch to subscribe. Specifically, for the custom reward points subscription.
 #[derive(Serialize, Deserialize)]
 pub struct RequestBody {
@@ -85,8 +106,20 @@ pub async fn connect(access_token: &str, client_id: &str, user_id: &str) -> anyh
                     )
                     .await?;
                 }
-                "session_keepalive" => {}
-                "notification" => {}
+                "session_keepalive" => {
+                    let keepalive_text: KeepAliveMessage = serde_json::from_str(&text)?;
+                    println!(
+                        "Keep alive message: {}",
+                        keepalive_text.metadata.message_type
+                    )
+                }
+                "notification" => {
+                    let notification_text: NotificationMessage = serde_json::from_str(&text)?;
+                    println!(
+                        "Notification: Broadcaster Name = {}",
+                        notification_text.payload.event.broadcaster_user_name
+                    )
+                }
                 other => println!("Unknown message type: {}", other),
             }
         }
