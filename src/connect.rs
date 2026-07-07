@@ -34,7 +34,7 @@ struct Session {
 #[derive(Serialize, Deserialize)]
 pub struct RequestBody {
     r#type: String,
-    version: u32,
+    version: String,
     condition: Condition,
     transport: Transport,
 }
@@ -104,7 +104,7 @@ pub async fn subscribe_to_channel_points(
 
     let body = RequestBody {
         r#type: String::from("channel.channel_points_custom_reward_redemption.add"),
-        version: 1,
+        version: String::from("1"),
         condition: Condition {
             broadcaster_user_id: broadcaster_user_id.to_string(),
         },
