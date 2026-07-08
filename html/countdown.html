@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Countdown Timer</title>
+        <style>
+            h1 {
+                font-size: 20em;
+            }
+        </style>
+    </head>
+    <body>
+        <h1 id="countdown">5:00</h1>
+
+        <script defer>
+            const countdownTimer = document.getElementById("countdown");
+            const COUNTDOWN_FROM_SECONDS = 300; // Five minutes.
+            let remainingTime = COUNTDOWN_FROM_SECONDS;
+
+            function startCountdown() {
+                remainingTime--;
+
+                countdownTimer.innerHTML = formatTime(remainingTime);
+            }
+
+            function formatTime(timeInseconds) {
+                let minutes = Math.floor(timeInseconds / 60);
+                let seconds = timeInseconds % 60;
+
+                let paddedSeconds = seconds.toString().padStart(2, "0");
+                return `${minutes}:${paddedSeconds}`;
+            }
+
+            setInterval(startCountdown, 1000);
+        </script>
+    </body>
+</html>
