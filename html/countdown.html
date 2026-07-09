@@ -12,6 +12,9 @@
         <h1 id="countdown">5:00</h1>
 
         <script defer>
+            console.log("Script running...");
+            const socket = new WebSocket("ws://localhost:8081/ws");
+            console.log("Socket made...");
             const countdownTimer = document.getElementById("countdown");
             const COUNTDOWN_FROM_SECONDS = 300; // Five minutes.
             let remainingTime = COUNTDOWN_FROM_SECONDS;
@@ -30,7 +33,17 @@
                 return `${minutes}:${paddedSeconds}`;
             }
 
-            setInterval(startCountdown, 1000);
+            socket.onmessage = (event) => {
+                console.log("socket message has been received");
+                const interval = setInterval(() => {
+                    startCountdown();
+                    if (remainingTime <= 0) {
+                        clearInterval(interval);
+                    }
+                }, 1000);
+            };
+
+            console.log("End of script");
         </script>
     </body>
 </html>

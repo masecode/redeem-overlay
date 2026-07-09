@@ -6,6 +6,7 @@ pub struct Config {
     pub client_id: String,
     pub client_secret: String,
     pub redirect_port: u16,
+    pub http_port: u16,
 }
 
 impl Config {
