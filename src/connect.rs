@@ -1,5 +1,7 @@
 use std::fmt::format;
 
+use crate::Arc;
+use crate::SharedState;
 use anyhow::Error;
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
@@ -80,7 +82,12 @@ pub struct ResponseArray {
     r#type: String,
 }
 
-pub async fn connect(access_token: &str, client_id: &str, user_id: &str) -> anyhow::Result<()> {
+pub async fn connect(
+    access_token: &str,
+    client_id: &str,
+    user_id: &str,
+    shared_state_tx: Arc<SharedState>,
+) -> anyhow::Result<()> {
     const TWITCH_WEBSOCKET_URL: &str = "ws://localhost:8080/ws";
     let (ws_stream, response) = connect_async(TWITCH_WEBSOCKET_URL)
         .await
@@ -118,7 +125,11 @@ pub async fn connect(access_token: &str, client_id: &str, user_id: &str) -> anyh
                     println!(
                         "Notification: Broadcaster Name = {}",
                         notification_text.payload.event.broadcaster_user_name
-                    )
+                    );
+                    shared_state_tx
+                        .tx
+                        .send("channel points twin".to_string())
+                        .expect("Failed to send.");
                 }
                 other => println!("Unknown message type: {}", other),
             }
