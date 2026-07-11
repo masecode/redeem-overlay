@@ -4,14 +4,24 @@ use axum::extract::State;
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::response::IntoResponse;
 use axum::response::Response;
-use axum::{Router, response::Html, routing::any, routing::get};
+use axum::{Router, http::StatusCode, response::Html, routing::any, routing::get};
 use futures_util::{SinkExt, StreamExt};
 use std::fs;
 use std::{fs::File, io::Read};
 
-async fn hello() -> Html<String> {
-    let file_content = fs::read_to_string("html/countdown.html").unwrap();
-    Html::from(file_content)
+async fn hello() -> (StatusCode, Html<String>) {
+    match fs::read_to_string("html/countdown.html") {
+        Ok(html) => (StatusCode::OK, Html::from(html)),
+        Err(e) => {
+            println!("Error reading file, {e}");
+            (
+                StatusCode::NOT_FOUND,
+                Html::from(String::from(
+                    "<p>Error reading countdown.html file in httpserver</p>",
+                )),
+            )
+        }
+    }
 }
 
 async fn index() -> &'static str {

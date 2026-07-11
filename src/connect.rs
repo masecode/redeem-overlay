@@ -144,7 +144,7 @@ pub async fn subscribe_to_channel_points(
     session_id: &str,
     client_id: &str,
     broadcaster_user_id: &str,
-) -> Result<ResponseBody, reqwest::Error> {
+) -> Result<ResponseBody, anyhow::Error> {
     const TWITCH_SUBSCRIPTIONS_URL: &str = "http://127.0.0.1:8080/eventsub/subscriptions";
     const CHANNEL_POINTS_TYPE: &str = "channel.channel_points_custom_reward_redemption.add";
     let client = reqwest::Client::new();
@@ -178,7 +178,15 @@ pub async fn subscribe_to_channel_points(
     }
 
     // Receive data
-    let post_response: ResponseBody = serde_json::from_str(&body_text).unwrap();
+    let post_response: ResponseBody = match serde_json::from_str(&body_text) {
+        Ok(body) => body,
+        Err(e) => {
+            println!("Error parsing the JSON response when subscribing to Twitch. {e}");
+            return Err(anyhow::anyhow!(
+                "Error parsing the JSON response when subscribing to Twitch. {e}"
+            ));
+        }
+    };
     println!(
         "Subscribed to {} with a status of {}",
         post_response.data[0].r#type, post_response.data[0].status

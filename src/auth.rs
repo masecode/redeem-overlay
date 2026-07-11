@@ -23,26 +23,56 @@ pub fn build_authorization(client_id: &str, port: u16, state: &str) -> String {
 ///
 /// Panics if:
 /// - the state from redirect is not the expected state.
-pub fn wait_for_code(port: u16, expected_state: &str) -> String {
+pub fn wait_for_code(port: u16, expected_state: &str) -> Result<String, anyhow::Error> {
     let addr = format!("127.0.0.1:{}", port);
-    let listener = TcpListener::bind(&addr).unwrap();
+    let listener = match TcpListener::bind(&addr) {
+        Ok(listener) => listener,
+        Err(e) => {
+            eprintln!("Cannot bind TcpListener to IP address and port. {e}");
+            panic!("{e}")
+        }
+    };
     let mut code = "";
     let mut state = "";
 
     println!("Listening on {} for redirect..", port);
 
     for stream in listener.incoming() {
-        let mut stream = stream.unwrap();
+        let mut stream = stream?;
         let mut reader = BufReader::new(&stream);
         let mut request_line = String::new();
-        reader.read_line(&mut request_line).unwrap();
+        reader.read_line(&mut request_line)?;
 
-        let path = request_line.split_whitespace().nth(1).unwrap();
+        let path = match request_line.split_whitespace().nth(1) {
+            Some(path) => path,
+            None => {
+                eprintln!("Cannot parse request line.");
+                anyhow::bail!(
+                    "Cannot parse request line when waiting for authentication redirect code."
+                )
+            }
+        };
 
-        let parameters = path.split_once("?").unwrap().1.split("&");
+        let parameters = match path.split_once("?") {
+            Some(parameters) => parameters.1.split("&"),
+            None => {
+                eprintln!("Cannot parse URL parameters.");
+                anyhow::bail!("Cannot split the URL parameters for authentication redirect code.")
+            }
+        };
 
         for parameter in parameters {
-            let current_parameter = parameter.split_once("=").unwrap();
+            let current_parameter = match parameter.split_once("=") {
+                Some(parameter) => parameter,
+                None => {
+                    eprintln!(
+                        "Cannot split key and value from parameters in authentication code redirect URL."
+                    );
+                    return Err(anyhow::anyhow!(
+                        "Cannot split key and value from parameters in authentication code redirect URL."
+                    ));
+                }
+            };
             if current_parameter.0 == "code" {
                 code = current_parameter.1;
             } else if current_parameter.0.starts_with("state") {
@@ -60,8 +90,13 @@ pub fn wait_for_code(port: u16, expected_state: &str) -> String {
             body.len(),
             body
         );
-        stream.write_all(response.as_bytes()).unwrap();
-        return code.to_string();
+        match stream.write_all(response.as_bytes()) {
+            Ok(_) => (),
+            Err(_) => {
+                eprintln!("Couldn't write HTML response back to browser after auth code redirect.")
+            }
+        }
+        return Ok(code.to_string());
     }
     unreachable!();
 }

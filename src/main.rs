@@ -17,13 +17,13 @@ struct SharedState {
  */
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let config = configparser::parse_configuration_file();
+    let config = configparser::parse_configuration_file()?;
     webbrowser::open(&auth::build_authorization(
         &config.client_id,
         3000,
         "temp_state_123",
     ))?;
-    let code = auth::wait_for_code(3000, "temp_state_123");
+    let code = auth::wait_for_code(3000, "temp_state_123")?;
     println!("Got code: {}", code);
 
     let tokens = auth::exchange_code(

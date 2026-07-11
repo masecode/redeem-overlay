@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::error::Error;
 use std::fs;
 
 #[derive(Debug, Deserialize)]
@@ -20,8 +21,8 @@ impl Config {
 /// Parses TOML configuration files.
 /// This function reads the specified file, parses its contents as a TOML document,
 /// and returns the parsed configuration.
-pub fn parse_configuration_file() -> Config {
-    let config = Config::load("config.toml").unwrap();
+pub fn parse_configuration_file() -> Result<Config, anyhow::Error> {
+    let config = Config::load("config.toml")?;
     println!("Configuration: {:?}", config);
-    return config;
+    Ok(config)
 }
