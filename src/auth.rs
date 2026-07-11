@@ -27,10 +27,12 @@ pub fn wait_for_code(port: u16, expected_state: &str) -> Result<String, anyhow::
     let addr = format!("127.0.0.1:{}", port);
     let listener = match TcpListener::bind(&addr) {
         Ok(listener) => listener,
-        Err(e) => {
-            eprintln!("Cannot bind TcpListener to IP address and port. {e}");
-            panic!("{e}")
+        Err(e) if e.kind() == std::io::ErrorKind::AddrInUse => {
+            anyhow::bail!(
+                "Port {port} are already in use, Close whatever is using it and run again."
+            );
         }
+        Err(e) => anyhow::bail!("Unable to bind TCP Listener: {e}"),
     };
     let mut code = "";
     let mut state = "";
