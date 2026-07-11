@@ -17,6 +17,7 @@
           rust-analyzer
           clippy
           rustfmt
+          twitch-cli
         ];
       };
     };
