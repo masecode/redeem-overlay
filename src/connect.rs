@@ -1,5 +1,3 @@
-use std::fmt::format;
-
 use crate::Arc;
 use crate::SharedState;
 use anyhow::Context;
