@@ -29,6 +29,7 @@ struct WelcomePayload {
 #[derive(Deserialize)]
 struct Session {
     id: String,
+    keepalive_timeout_seconds: u64,
 }
 
 // Keep alive message structs
