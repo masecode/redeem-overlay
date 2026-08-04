@@ -128,3 +128,57 @@ pub async fn exchange_code(
 
     Ok(tokens)
 }
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_build_auth_url() {
+        let client_id = "test_client";
+        let port = 3000;
+        let state = "temp_state";
+        let url = build_authorization(client_id, port, state);
+
+        assert!(
+            url.contains("https://id.twitch.tv/oauth2/authorize?response_type=code&client_id=test_client&redirect_uri=http%3A%2F%2Flocalhost%3A3000&scope=channel%3Aread%3Aredemptions&state=temp_state"),
+            "Authentication URL is not correct upon test."
+        );
+    }
+
+    #[test]
+    fn test_build_auth_url_includes_client_id() {
+        let client_id = "test_client";
+        let port = 3000;
+        let state = "temp_state";
+        let url = build_authorization(client_id, port, state);
+
+        assert!(
+            url.contains("client_id=test_client"),
+            "Client id parameter must be in authentication url"
+        );
+    }
+    #[test]
+    fn test_build_auth_url_includes_port() {
+        let client_id = "test_client";
+        let port = 3000;
+        let state = "temp_state";
+        let url = build_authorization(client_id, port, state);
+
+        assert!(
+            url.contains("redirect_uri=http%3A%2F%2Flocalhost%3A3000"),
+            "Redirect URL Port parameter must be in authentication URL"
+        );
+    }
+    #[test]
+    fn test_build_auth_url_includes_state() {
+        let client_id = "test_client";
+        let port = 3000;
+        let state = "temp_state";
+        let url = build_authorization(client_id, port, state);
+
+        assert!(
+            url.contains("state=temp_state"),
+            "State parameter must be in authentication URL"
+        );
+    }
+}
