@@ -10,7 +10,7 @@
         </style>
     </head>
     <body>
-        <h1 id="countdown">5:00</h1>
+        <h1 id="countdown">0:00</h1>
 
         <script defer>
             console.log("Script running...");
@@ -18,7 +18,8 @@
             console.log("Socket made...");
             const countdownTimer = document.getElementById("countdown");
             const COUNTDOWN_FROM_SECONDS = 300; // Five minutes.
-            let remainingTime = COUNTDOWN_FROM_SECONDS;
+            let remainingTime = 0;
+            let isIntervalRunning = false;
 
             function startCountdown() {
                 remainingTime--;
@@ -36,12 +37,18 @@
 
             socket.onmessage = (event) => {
                 console.log("socket message has been received");
-                const interval = setInterval(() => {
-                    startCountdown();
-                    if (remainingTime <= 0) {
-                        clearInterval(interval);
-                    }
-                }, 1000);
+                remainingTime += COUNTDOWN_FROM_SECONDS;
+                countdownTimer.innerHTML = formatTime(remainingTime);
+                if (!isIntervalRunning) {
+                    const interval = setInterval(() => {
+                        startCountdown();
+                        if (remainingTime <= 0) {
+                            clearInterval(interval);
+                            isIntervalRunning = false;
+                        }
+                    }, 1000);
+                    isIntervalRunning = true;
+                }
             };
 
             console.log("End of script");
