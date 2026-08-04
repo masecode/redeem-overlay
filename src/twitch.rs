@@ -20,7 +20,11 @@ pub async fn get_broadcaster_id(client_id: &str, token: &str) -> anyhow::Result<
         .await?;
 
     let info = get_request.json::<HelixData>().await?;
-    let id = info.data[0].id.to_string();
+    let entry = info
+        .data
+        .first()
+        .context("Twitch returned no user data, check your authentication token.")?;
+    let id = entry.id.to_string();
 
     Ok(id)
 }

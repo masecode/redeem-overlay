@@ -2,10 +2,11 @@ use std::fmt::format;
 
 use crate::Arc;
 use crate::SharedState;
-use anyhow::Error;
+use anyhow::Context;
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tokio::time::{Duration, timeout};
 use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::Message;
 

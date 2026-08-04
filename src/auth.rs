@@ -1,3 +1,5 @@
+use anyhow::Context;
+use anyhow::bail;
 use serde::Deserialize;
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpListener;
@@ -55,13 +57,11 @@ pub fn wait_for_code(port: u16, expected_state: &str) -> Result<String, anyhow::
             }
         };
 
-        let parameters = match path.split_once("?") {
-            Some(parameters) => parameters.1.split("&"),
-            None => {
-                eprintln!("Cannot parse URL parameters.");
-                anyhow::bail!("Cannot split the URL parameters for authentication redirect code.")
-            }
-        };
+        let parameters = path
+            .split_once("?")
+            .with_context(|| "URL from Twitch Auth redirect has no query parameters")?
+            .1
+            .split("&");
 
         for parameter in parameters {
             let current_parameter = match parameter.split_once("=") {
@@ -83,7 +83,7 @@ pub fn wait_for_code(port: u16, expected_state: &str) -> Result<String, anyhow::
         }
 
         if state != expected_state {
-            panic!("Returned state was not the expected state.");
+            bail!("Returned state was not the expected state.");
         }
 
         let body = "You can close this tab now, received.";
@@ -100,7 +100,7 @@ pub fn wait_for_code(port: u16, expected_state: &str) -> Result<String, anyhow::
         }
         return Ok(code.to_string());
     }
-    unreachable!();
+    bail!("OAuth redirect listener received no connections before shutting down.");
 }
 
 pub async fn exchange_code(
