@@ -53,6 +53,21 @@ struct NotificationPayload {
 struct NotificationEvent {
     broadcaster_user_name: String,
 }
+// Session reconnect message structs
+#[derive(Deserialize)]
+struct ReconnectMessage {
+    metadata: Metadata,
+    payload: ReconnectPayload,
+}
+#[derive(Deserialize)]
+struct ReconnectPayload {
+    session: ReconnectSession,
+}
+#[derive(Deserialize)]
+struct ReconnectSession {
+    id: String,
+    reconnect_url: String,
+}
 
 // Request Body stores a request body used to send a POST request to Twitch to subscribe. Specifically, for the custom reward points subscription.
 #[derive(Serialize, Deserialize)]
@@ -90,54 +105,91 @@ pub async fn connect(
     shared_state_tx: Arc<SharedState>,
 ) -> anyhow::Result<()> {
     const TWITCH_WEBSOCKET_URL: &str = "ws://localhost:8080/ws";
-    let (ws_stream, response) = connect_async(TWITCH_WEBSOCKET_URL)
-        .await
-        .expect("Failed to connect to websocket.");
+    let mut twitch_websocket_url = TWITCH_WEBSOCKET_URL.to_string();
+    let mut is_reconnect_event: bool = false;
+    let mut timeout_seconds: Duration = Duration::from_secs(10);
 
-    println!("Connected with status: {}", response.status());
+    'connection: loop {
+        let (ws_stream, response) = connect_async(&twitch_websocket_url)
+            .await
+            .context("Failed to connect to websocket.")?;
 
-    let (mut write, mut read) = ws_stream.split();
+        println!("Connected with status: {}", response.status());
 
-    while let Some(message) = read.next().await {
-        let message = message.expect("Error reading from websocket.");
-        if let Message::Text(text) = message {
-            let envelope: Envelope = serde_json::from_str(&text)?;
-            match envelope.metadata.message_type.as_str() {
-                "session_welcome" => {
-                    let welcome_text: WelcomeMessage = serde_json::from_str(&text)?;
-                    println!("welcome message id: {}", welcome_text.payload.session.id);
-                    subscribe_to_channel_points(
-                        access_token,
-                        &welcome_text.payload.session.id,
-                        client_id,
-                        user_id,
-                    )
-                    .await?;
+        let (mut _write, mut read) = ws_stream.split();
+
+        loop {
+            match timeout(timeout_seconds, read.next()).await {
+                Ok(Some(Ok(message))) => {
+                    let message = message;
+                    if let Message::Text(text) = message {
+                        let envelope: Envelope = serde_json::from_str(&text)?;
+                        match envelope.metadata.message_type.as_str() {
+                            "session_welcome" => {
+                                let welcome_text: WelcomeMessage = serde_json::from_str(&text)?;
+                                println!(
+                                    "welcome message id: {}\n keep alive timeout in seconds: {}",
+                                    welcome_text.payload.session.id,
+                                    welcome_text.payload.session.keepalive_timeout_seconds
+                                );
+                                if !is_reconnect_event {
+                                    subscribe_to_channel_points(
+                                        access_token,
+                                        &welcome_text.payload.session.id,
+                                        client_id,
+                                        user_id,
+                                    )
+                                    .await?;
+                                }
+                                timeout_seconds = Duration::from_secs(
+                                    welcome_text.payload.session.keepalive_timeout_seconds,
+                                );
+                            }
+                            "session_keepalive" => {
+                                let keepalive_text: KeepAliveMessage = serde_json::from_str(&text)?;
+                                println!(
+                                    "Keep alive message: {}",
+                                    keepalive_text.metadata.message_type
+                                )
+                            }
+                            "notification" => {
+                                let notification_text: NotificationMessage =
+                                    serde_json::from_str(&text)?;
+                                println!(
+                                    "Notification: Broadcaster Name = {}",
+                                    notification_text.payload.event.broadcaster_user_name
+                                );
+                                let _ = shared_state_tx.tx.send("channel points twin".to_string());
+                            }
+                            "session_reconnect" => {
+                                let reconnect_text: ReconnectMessage = serde_json::from_str(&text)?;
+                                println!(
+                                    "Reconnect text: {}",
+                                    reconnect_text.metadata.message_type
+                                );
+                                twitch_websocket_url = reconnect_text.payload.session.reconnect_url;
+                                is_reconnect_event = true;
+                                break;
+                            }
+                            other => println!("Unknown message type: {}", other),
+                        }
+                    }
                 }
-                "session_keepalive" => {
-                    let keepalive_text: KeepAliveMessage = serde_json::from_str(&text)?;
-                    println!(
-                        "Keep alive message: {}",
-                        keepalive_text.metadata.message_type
-                    )
+                Ok(Some(Err(e))) => {
+                    eprintln!("Websocket Error: {e}");
+                    break;
                 }
-                "notification" => {
-                    let notification_text: NotificationMessage = serde_json::from_str(&text)?;
-                    println!(
-                        "Notification: Broadcaster Name = {}",
-                        notification_text.payload.event.broadcaster_user_name
-                    );
-                    shared_state_tx
-                        .tx
-                        .send("channel points twin".to_string())
-                        .expect("Failed to send.");
+                Ok(None) => {
+                    println!("Connection closed.");
+                    break;
                 }
-                other => println!("Unknown message type: {}", other),
+                Err(_elapsed) => {
+                    println!("Connection to Twitch timed out - reconnecting.");
+                    break;
+                }
             }
         }
     }
-
-    todo!()
 }
 /// Method that subscribes to a broadcasters custom rewards notification endpoint.
 pub async fn subscribe_to_channel_points(
