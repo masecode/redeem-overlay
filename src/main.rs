@@ -18,35 +18,17 @@ struct SharedState {
  */
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let expected_state: &str = &generate_random_string(20);
     let config = configparser::parse_configuration_file()?;
-    webbrowser::open(&auth::build_authorization(
-        &config.client_id,
-        3000,
-        expected_state,
-    ))?;
-    let code = auth::wait_for_code(3000, expected_state)?;
-    println!("Got code: {}", code);
 
-    let tokens = auth::exchange_code(
-        &config.client_id,
-        &config.client_secret,
-        &code,
-        config.redirect_port,
-    )
-    .await?;
+    let token_state = auth::check_tokens().await?;
 
-    println!("{:?}", tokens);
-    let broadcaster_user_id = twitch::get_broadcaster_id(&config.client_id, &tokens.access_token)
-        .await
-        .expect("Failed to get broadcaster id.");
-    println!("Broadcaster id: {}", &broadcaster_user_id);
+    // TODO: Implement OAuth preservation. Web browser should only open if both access and refresh token is not available.
+    let broadcaster_user_id =
+        twitch::get_broadcaster_id(&config.client_id, token_state.to_string())
+            .await
+            .expect("Failed to get broadcaster id.");
+    // println!("Broadcaster id: {}", &broadcaster_user_id); // Testing purposes.
 
-    // Need to:
-    // 1. create a channel,
-    // 2. put the sending side into a "shared task" using an Arc wrapper.
-    // 3. Get that "Shared task" to both consumers (Twitch notification handler and the httpserver that needs to send a message down.)
-    // 4. Get the shared stated attached to the Router
     let (tx, _rx) = broadcast::channel(10);
 
     let shared_state = Arc::new(SharedState { tx });
@@ -58,7 +40,7 @@ async fn main() -> anyhow::Result<()> {
     });
     // This has to be LAST. Do not put anything after connect.
     connect::connect(
-        &tokens.access_token,
+        &token_state,
         &config.client_id,
         &broadcaster_user_id,
         twitch_state,

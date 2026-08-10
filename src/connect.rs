@@ -1,9 +1,9 @@
 use crate::Arc;
 use crate::SharedState;
+use crate::auth;
 use anyhow::Context;
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use tokio::time::{Duration, timeout};
 use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::Message;
@@ -41,7 +41,7 @@ struct KeepAliveMessage {
 // Notification message structs
 #[derive(Deserialize)]
 struct NotificationMessage {
-    metadata: Metadata,
+    _metadata: Metadata,
     payload: NotificationPayload,
 }
 #[derive(Deserialize)]
@@ -64,7 +64,7 @@ struct ReconnectPayload {
 }
 #[derive(Deserialize)]
 struct ReconnectSession {
-    id: String,
+    _id: String,
     reconnect_url: String,
 }
 
@@ -108,12 +108,10 @@ pub async fn connect(
     let mut is_reconnect_event: bool = false;
     let mut timeout_seconds: Duration = Duration::from_secs(10);
 
-    'connection: loop {
-        let (ws_stream, response) = connect_async(&twitch_websocket_url)
+    '_connection: loop {
+        let (ws_stream, _response) = connect_async(&twitch_websocket_url)
             .await
             .context("Failed to connect to websocket.")?;
-
-        println!("Connected with status: {}", response.status());
 
         let (mut _write, mut read) = ws_stream.split();
 
@@ -126,14 +124,9 @@ pub async fn connect(
                         match envelope.metadata.message_type.as_str() {
                             "session_welcome" => {
                                 let welcome_text: WelcomeMessage = serde_json::from_str(&text)?;
-                                println!(
-                                    "welcome message id: {}\n keep alive timeout in seconds: {}",
-                                    welcome_text.payload.session.id,
-                                    welcome_text.payload.session.keepalive_timeout_seconds
-                                );
                                 if !is_reconnect_event {
                                     subscribe_to_channel_points(
-                                        access_token,
+                                        access_token.to_string(),
                                         &welcome_text.payload.session.id,
                                         client_id,
                                         user_id,
@@ -192,7 +185,7 @@ pub async fn connect(
 }
 /// Method that subscribes to a broadcasters custom rewards notification endpoint.
 pub async fn subscribe_to_channel_points(
-    access_token: &str,
+    mut access_token: String,
     session_id: &str,
     client_id: &str,
     broadcaster_user_id: &str,
@@ -213,35 +206,47 @@ pub async fn subscribe_to_channel_points(
         },
     };
 
-    let post_request = client
-        .post(TWITCH_SUBSCRIPTIONS_URL)
-        .header("Authorization", format!("Bearer {}", access_token))
-        .header("Client-Id", client_id)
-        .header("Content-Type", "application/json")
-        .json(&body)
-        .send()
-        .await?;
+    '_post_request_loop: loop {
+        let bearer = format!("Bearer {}", access_token);
+        let post_request = client
+            .post(TWITCH_SUBSCRIPTIONS_URL)
+            .header("Authorization", bearer)
+            .header("Client-Id", client_id)
+            .header("Content-Type", "application/json")
+            .json(&body)
+            .send()
+            .await?;
 
-    let status = post_request.status();
-    let body_text = post_request.text().await?;
-    if !status.is_success() {
-        println!("Subscription Request status code {}", status);
-        eprintln!("Error body: {:?}", body_text);
-    }
-
-    // Receive data
-    let post_response: ResponseBody = match serde_json::from_str(&body_text) {
-        Ok(body) => body,
-        Err(e) => {
-            println!("Error parsing the JSON response when subscribing to Twitch. {e}");
-            return Err(anyhow::anyhow!(
-                "Error parsing the JSON response when subscribing to Twitch. {e}"
-            ));
+        println!("Sending post request for channel points...");
+        let status = post_request.status();
+        let body_text = post_request.text().await?;
+        if status.is_client_error() {
+            println!("Channel points request sent back a client error! Refreshing tokens...");
+            let new_access_token = auth::check_tokens().await?;
+            access_token = new_access_token;
+            continue;
+        } else if !status.is_success() {
+            println!(
+                "Subscription Request sent back an error! Request status code: {}",
+                status
+            );
+            eprintln!("Error body: {:?}", body_text);
         }
-    };
-    println!(
-        "Subscribed to {} with a status of {}",
-        post_response.data[0].r#type, post_response.data[0].status
-    );
-    Ok(post_response)
+
+        // Receive data
+        let post_response: ResponseBody = match serde_json::from_str(&body_text) {
+            Ok(body) => body,
+            Err(e) => {
+                println!("Error parsing the JSON response when subscribing to Twitch. {e}");
+                break Err(anyhow::anyhow!(
+                    "Error parsing the JSON response when subscribing to Twitch. {e}"
+                ));
+            }
+        };
+        println!(
+            "Subscribed to {} with a status of {}",
+            post_response.data[0].r#type, post_response.data[0].status
+        );
+        break Ok(post_response);
+    }
 }

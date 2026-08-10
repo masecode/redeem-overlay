@@ -22,7 +22,7 @@ impl Config {
 /// and returns the parsed configuration.
 pub fn parse_configuration_file() -> Result<Config, anyhow::Error> {
     let config = Config::load("config.toml")?;
-    println!("Configuration: {:?}", config);
+    // println!("Configuration: {:?}", config); // For testing purposes.
     Ok(config)
 }
 
