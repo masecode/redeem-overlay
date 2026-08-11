@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Configuration</title>
+    </head>
+    <body>
+        <h1>Configuration Panel</h1>
+        <div id="reward_list">
+
+        </div>
+        <script defer>
+
+
+          async function getJson() {
+            let checkboxes = 0;
+            let response = await fetch('api/rewards');
+
+            if (!response.ok) {
+              throw new Error("Response threw an error.");
+            }
+            let reward_results = await response.json();
+            return response.json();
+
+          }
+          let json = getJson();
+          console.log(json);
+
+        </script>
+    </body>
+
+
+</html>
