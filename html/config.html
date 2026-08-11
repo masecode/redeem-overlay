@@ -19,7 +19,7 @@
               throw new Error("Response threw an error.");
             }
             let reward_results = await response.json();
-            return response.json();
+            return reward_results();
 
           }
           let json = getJson();
