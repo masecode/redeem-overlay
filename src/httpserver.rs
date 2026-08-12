@@ -135,11 +135,23 @@ async fn receive_saved_rewards(
     Json(ids): Json<Vec<String>>,
 ) -> StatusCode {
     println!("{:?}", ids);
-    let json_array = serde_json::to_string_pretty(&ids).unwrap();
-    fs::write("rewards.json", json_array).unwrap();
-    let mut reward_list = state.reward_list.write().unwrap();
+    let json_array = match serde_json::to_string_pretty(&ids) {
+        Ok(array) => array,
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR,
+    };
+    match fs::write("rewards.json", json_array) {
+        Ok(e) => e,
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR,
+    };
+    let mut reward_list = match state.reward_list.write() {
+        Ok(list) => list,
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR,
+    };
     *reward_list = ids;
-    let mut reward_list_exists = state.reward_list_exists.write().unwrap();
+    let mut reward_list_exists = match state.reward_list_exists.write() {
+        Ok(bool) => bool,
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR,
+    };
     *reward_list_exists = true;
 
     StatusCode::OK
