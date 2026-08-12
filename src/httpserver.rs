@@ -6,7 +6,10 @@ use crate::twitch;
 use axum::extract::State;
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::response::IntoResponse;
-use axum::{Router, http::StatusCode, response::Html, response::Json, routing::any, routing::get};
+use axum::{
+    Router, http::StatusCode, response::Html, response::Json, routing::any, routing::get,
+    routing::post,
+};
 use futures_util::{SinkExt, StreamExt};
 use std::fs;
 
@@ -68,6 +71,7 @@ pub async fn run_server(port: u16, shared_state: Arc<SharedState>) -> anyhow::Re
         .route("/ws", any(ws_handler))
         .route("/config", get(serve_configuration_html))
         .route("/api/rewards", get(give_rewards_list))
+        .route("/api/rewards", post(receive_saved_rewards))
         .with_state(shared_state);
     let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{}", port)).await?;
     axum::serve(listener, app).await?;
@@ -124,4 +128,19 @@ async fn give_rewards_list() -> Result<Json<serde_json::Value>, ApiError> {
     }
     let json: serde_json::Value = get_response.json().await?;
     Ok(Json(json))
+}
+
+async fn receive_saved_rewards(
+    State(state): State<Arc<SharedState>>,
+    Json(ids): Json<Vec<String>>,
+) -> StatusCode {
+    println!("{:?}", ids);
+    let json_array = serde_json::to_string_pretty(&ids).unwrap();
+    fs::write("rewards.json", json_array).unwrap();
+    let mut reward_list = state.reward_list.write().unwrap();
+    *reward_list = ids;
+    let mut reward_list_exists = state.reward_list_exists.write().unwrap();
+    *reward_list_exists = true;
+
+    StatusCode::OK
 }

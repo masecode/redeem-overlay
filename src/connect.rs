@@ -41,7 +41,7 @@ struct KeepAliveMessage {
 // Notification message structs
 #[derive(Deserialize)]
 struct NotificationMessage {
-    _metadata: Metadata,
+    metadata: Metadata,
     payload: NotificationPayload,
 }
 #[derive(Deserialize)]
@@ -51,6 +51,12 @@ struct NotificationPayload {
 #[derive(Deserialize)]
 struct NotificationEvent {
     broadcaster_user_name: String,
+    reward: RewardEvent,
+}
+#[derive(Deserialize)]
+struct RewardEvent {
+    id: String,
+    title: String,
 }
 // Session reconnect message structs
 #[derive(Deserialize)]
@@ -64,7 +70,7 @@ struct ReconnectPayload {
 }
 #[derive(Deserialize)]
 struct ReconnectSession {
-    _id: String,
+    id: String,
     reconnect_url: String,
 }
 
@@ -147,11 +153,33 @@ pub async fn connect(
                             "notification" => {
                                 let notification_text: NotificationMessage =
                                     serde_json::from_str(&text)?;
-                                println!(
-                                    "Notification: Broadcaster Name = {}",
-                                    notification_text.payload.event.broadcaster_user_name
-                                );
-                                let _ = shared_state_tx.tx.send("channel points twin".to_string());
+                                if !shared_state_tx
+                                    .reward_list_exists
+                                    .read()
+                                    .expect("Could not read if the reward list exists.")
+                                    .clone()
+                                {
+                                    println!(
+                                        "Notification: Broadcaster Name = {}",
+                                        notification_text.payload.event.broadcaster_user_name
+                                    );
+                                    let _ =
+                                        shared_state_tx.tx.send("channel points twin".to_string());
+                                    continue;
+                                }
+                                let reward_list = shared_state_tx.reward_list.read().expect("Could not read reward list from state when trying to do notification.").clone();
+                                for id in reward_list {
+                                    if notification_text.payload.event.reward.id == id {
+                                        println!(
+                                            "Notification: Broadcaster Name = {}, Redeemed Reward = {}",
+                                            notification_text.payload.event.broadcaster_user_name,
+                                            notification_text.payload.event.reward.title
+                                        );
+                                        let _ = shared_state_tx
+                                            .tx
+                                            .send("channel points twin".to_string());
+                                    }
+                                }
                             }
                             "session_reconnect" => {
                                 let reconnect_text: ReconnectMessage = serde_json::from_str(&text)?;

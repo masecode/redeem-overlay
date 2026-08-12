@@ -2,28 +2,51 @@
 <html>
     <head>
         <title>Configuration</title>
+
     </head>
     <body>
         <h1>Configuration Panel</h1>
+        <form id="reward_list_form">
         <div id="reward_list">
 
         </div>
-        <script defer>
-
+        <input type="submit" name="rewards_list_form" value="Save">
+        </form>
+        <script defer type="module">
+          const POINTS_FORM = document.getElementById("reward_list_form");
+          const POINTS_DIV = document.getElementById("reward_list");
 
           async function getJson() {
-            let checkboxes = 0;
-            let response = await fetch('api/rewards');
+              let checkboxes = 0;
+              let response = await fetch('api/rewards');
 
-            if (!response.ok) {
-              throw new Error("Response threw an error.");
-            }
-            let reward_results = await response.json();
-            return reward_results();
-
+              if (!response.ok) {
+                throw new Error("Response threw an error.");
+              }
+              let reward_results = await response.json();
+              return reward_results;
           }
-          let json = getJson();
+          let json = await getJson();
           console.log(json);
+          for (let i = 0; i < json.data.length; i++) {
+              POINTS_DIV.innerHTML += "<input type='checkbox' name='rewards' value='" + json.data[i].id + "'>" + json.data[i].title + "</input>";
+          }
+
+          POINTS_FORM.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            let checked_array = [];
+            let checked_rewards = document.querySelectorAll('input[name="rewards"]:checked').forEach(cb => {
+              checked_array.push(cb.value);
+            });
+
+            await fetch("/api/rewards", {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(checked_array)
+            });
+          });
+
+
 
         </script>
     </body>
