@@ -111,7 +111,7 @@ pub async fn connect(
     user_id: &str,
     shared_state_tx: Arc<SharedState>,
 ) -> anyhow::Result<()> {
-    const TWITCH_WEBSOCKET_URL: &str = "ws://localhost:8080/ws";
+    const TWITCH_WEBSOCKET_URL: &str = "wss://eventsub.wss.twitch.tv/ws";
     let mut twitch_websocket_url = TWITCH_WEBSOCKET_URL.to_string();
     let mut is_reconnect_event: bool = false;
     let mut timeout_seconds: Duration = Duration::from_secs(10);
@@ -220,7 +220,7 @@ pub async fn subscribe_to_channel_points(
     client_id: &str,
     broadcaster_user_id: &str,
 ) -> Result<ResponseBody, anyhow::Error> {
-    const TWITCH_SUBSCRIPTIONS_URL: &str = "http://127.0.0.1:8080/eventsub/subscriptions";
+    const TWITCH_SUBSCRIPTIONS_URL: &str = "https://api.twitch.tv/helix/eventsub/subscriptions";
     const CHANNEL_POINTS_TYPE: &str = "channel.channel_points_custom_reward_redemption.add";
     let client = reqwest::Client::new();
 
