@@ -1,13 +1,11 @@
 use anyhow;
 use rand::{RngExt, distr::Alphanumeric};
 use serde_json;
-use std::default;
 use std::fs;
 use std::result::Result::Ok;
 use std::sync::Arc;
 use std::sync::RwLock;
 use tokio::sync::broadcast;
-use webbrowser::Browser::Default;
 
 mod auth;
 mod configparser;
@@ -40,9 +38,9 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
-    let mut reward_list_exists: RwLock<bool> = match reward_list.read() {
+    let reward_list_exists: RwLock<bool> = match reward_list.read() {
         Ok(list) => {
-            if (!list.is_empty()) {
+            if !list.is_empty() {
                 RwLock::new(true)
             } else {
                 RwLock::new(false)

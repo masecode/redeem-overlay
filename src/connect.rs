@@ -40,6 +40,7 @@ struct KeepAliveMessage {
 
 // Notification message structs
 #[derive(Deserialize)]
+#[allow(dead_code)] // Needed because metadata is required for the message to go through.
 struct NotificationMessage {
     metadata: Metadata,
     payload: NotificationPayload,
@@ -69,6 +70,7 @@ struct ReconnectPayload {
     session: ReconnectSession,
 }
 #[derive(Deserialize)]
+#[allow(dead_code)] // Needed because id is required for message to go through.
 struct ReconnectSession {
     id: String,
     reconnect_url: String,
