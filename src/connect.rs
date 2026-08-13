@@ -143,7 +143,7 @@ pub async fn connect(
                                 }
                                 timeout_seconds = Duration::from_secs(
                                     welcome_text.payload.session.keepalive_timeout_seconds,
-                                );
+                                ) * 2;
                             }
                             "session_keepalive" => {
                                 let keepalive_text: KeepAliveMessage = serde_json::from_str(&text)?;
