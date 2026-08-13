@@ -25,7 +25,14 @@ struct SharedState {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let config = configparser::parse_configuration_file()?;
-    let reward_file = fs::read_to_string("rewards.json")?;
+    let reward_file = match fs::read_to_string("rewards.json") {
+        Ok(file) => file,
+        Err(_) => {
+            println!("Could not read reward list file, possibly non-existent or empty.");
+            let default: String = String::default();
+            default
+        }
+    };
 
     let token_state = auth::check_tokens().await?;
 
